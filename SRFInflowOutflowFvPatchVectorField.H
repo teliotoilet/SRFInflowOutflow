@@ -25,6 +25,9 @@ Class
     Foam::SRFInflowOutflowFvPatchVectorField
 
 Description
+    ***BASED ON SRFFreestreamVelocityFvPatchVectorField***
+    Developed by Eliot Quon (8/13/15)
+
     Freestream velocity condition to be used in conjunction with the single
     rotating frame (SRF) model (see: SRFModel class)
 
