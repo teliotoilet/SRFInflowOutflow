@@ -42,7 +42,8 @@ SRFInflowOutflowFvPatchVectorField
 :
     inletOutletFvPatchVectorField(p, iF),
     relative_(false),
-    UInf_(vector::zero)
+    UInf_(vector::zero),
+    calcFrac_(true)
 {}
 
 
@@ -57,7 +58,8 @@ SRFInflowOutflowFvPatchVectorField
 :
     inletOutletFvPatchVectorField(ptf, p, iF, mapper),
     relative_(ptf.relative_),
-    UInf_(ptf.UInf_)
+    UInf_(ptf.UInf_),
+    calcFrac_(ptf.calcFrac_)
 {}
 
 
@@ -71,7 +73,8 @@ SRFInflowOutflowFvPatchVectorField
 :
     inletOutletFvPatchVectorField(p, iF),
     relative_(dict.lookupOrDefault("relative", false)),
-    UInf_(dict.lookup("UInf"))
+    UInf_(dict.lookup("UInf")),
+    calcFrac_(dict.lookupOrDefault("calcFraction", false))
 {
     this->phiName_ = dict.lookupOrDefault<word>("phi","phi");
 
@@ -87,7 +90,8 @@ SRFInflowOutflowFvPatchVectorField
 :
     inletOutletFvPatchVectorField(srfvpvf),
     relative_(srfvpvf.relative_),
-    UInf_(srfvpvf.UInf_)
+    UInf_(srfvpvf.UInf_),
+    calcFrac_(srfvpvf.calcFrac_)
 {}
 
 
@@ -100,7 +104,8 @@ SRFInflowOutflowFvPatchVectorField
 :
     inletOutletFvPatchVectorField(srfvpvf, iF),
     relative_(srfvpvf.relative_),
-    UInf_(srfvpvf.UInf_)
+    UInf_(srfvpvf.UInf_),
+    calcFrac_(srfvpvf.calcFrac_)
 {}
 
 
@@ -132,12 +137,15 @@ void Foam::SRFInflowOutflowFvPatchVectorField::updateCoeffs()
             refValue() = UInf_ - srf.velocity(patch().Cf());
 
             vector omg( srf.omega().value() );       // note: r = [x,y,z]
-            vector dur(       0, -omg[2],  omg[1] ); // grad( (Omega x r) . i )
-            vector dvr(  omg[2],       0, -omg[0] ); // grad( (Omega x r) . j )
-            vector dwr( -omg[1],  omg[0],       0 ); // grad( (Omega x r) . k )
-            refGrad().component(0) = patch().Sf() & dur;
-            refGrad().component(1) = patch().Sf() & dvr;
-            refGrad().component(2) = patch().Sf() & dwr;
+            vector gradu(       0, -omg[2],  omg[1] ); // grad( (Omega x r) . i )
+            vector gradv(  omg[2],       0, -omg[0] ); // grad( (Omega x r) . j )
+            vector gradw( -omg[1],  omg[0],       0 ); // grad( (Omega x r) . k )
+            forAll( *this, faceI )
+            {
+                refGrad()[faceI].component(0) = patch().Sf()[faceI] & gradu;
+                refGrad()[faceI].component(1) = patch().Sf()[faceI] & gradv;
+                refGrad()[faceI].component(2) = patch().Sf()[faceI] & gradw;
+            }
         }
         // If already relative to the SRF simply supply the inlet value
         // as a fixed value
@@ -158,16 +166,49 @@ void Foam::SRFInflowOutflowFvPatchVectorField::updateCoeffs()
         refValue() = UInf_ - srf.velocity(patch().Cf());
 
         vector omg( srf.omega().value() );       // note: r = [x,y,z]
-        vector dur(       0, -omg[2],  omg[1] ); // grad( (Omega x r) . i )
-        vector dvr(  omg[2],       0, -omg[0] ); // grad( (Omega x r) . j )
-        vector dwr( -omg[1],  omg[0],       0 ); // grad( (Omega x r) . k )
-        refGrad().component(0) = patch().Sf() & dur;
-        refGrad().component(1) = patch().Sf() & dvr;
-        refGrad().component(2) = patch().Sf() & dwr;
+        vector gradu(       0, -omg[2],  omg[1] ); // grad( (Omega x r) . i )
+        vector gradv(  omg[2],       0, -omg[0] ); // grad( (Omega x r) . j )
+        vector gradw( -omg[1],  omg[0],       0 ); // grad( (Omega x r) . k )
+        // this gives uniform 0...
+        //refGrad().component(0) = patch().Sf() & gradu;
+        //refGrad().component(1) = patch().Sf() & gradv;
+        //refGrad().component(2) = patch().Sf() & gradw;
+        forAll( *this, faceI )
+        {
+            refGrad()[faceI].component(0) = patch().Sf()[faceI] & gradu;
+            refGrad()[faceI].component(1) = patch().Sf()[faceI] & gradv;
+            refGrad()[faceI].component(2) = patch().Sf()[faceI] & gradw;
+
+            // note: this makes the BC select inflow/outflow based on initial
+            //       rather than instantanteous values
+            valueFraction()[faceI] = 1.0 - pos(UInf_ & patch().Sf()[faceI]);
+        }
+
     }
 
     // Set the inlet-outlet choice based on the direction of the freestream
-    valueFraction() = 1.0 - pos(refValue() & patch().Sf());
+    // note: this causes a switching between inflow/outflow on the outer boundary...
+    if( calcFrac_ )
+    {
+        valueFraction() = 1.0 - pos(refValue() & patch().Sf());
+    }
+    else valueFraction() = 0.0;
+
+    ////////////////////////////////////////////////////////////
+    // DEBUG ///////////////////////////////////////////////////
+    // Notes:
+    // * Sf points outward from computational domain
+//    forAll(*this, faceI)
+//    {
+//        vector bf(patch().Cf()[faceI]);
+//        Info<< patch().name() << " " 
+//            << bf << ":"
+//            << " value" << refValue()[faceI]
+//            << " grad" << refGrad()[faceI]
+//            << " dx=" << 1/patch().deltaCoeffs()[faceI]
+//            << " frac=" << valueFraction()[faceI] << endl;
+//    }
+    ////////////////////////////////////////////////////////////
 
     mixedFvPatchField<vector>::updateCoeffs();
 }

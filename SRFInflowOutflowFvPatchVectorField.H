@@ -52,9 +52,11 @@ Description
     \heading Patch usage
 
     \table
-        Property        | Description               | Required | Default value
-        UInf            | freestream velocity       | yes      |
-        relative        | UInf relative to the SRF? | no       |
+        Property        | Description                | Required | Default value
+        UInf            | freestream velocity        | yes      |
+        relative        | UInf relative to the SRF?  | no       | no
+        calcFraction    | calculate value fraction   | no       | yes
+                        ! from instantaneous values? |          |
     \endtable
 
     Example of the boundary condition specification:
@@ -102,6 +104,10 @@ class SRFInflowOutflowFvPatchVectorField
 
         //- Velocity of the free stream in the absolute frame [m/s]
         vector UInf_;
+
+        //- Use Uinf + SRF velocity to determine fixed inflow vs outflow
+        //  If false, assume extrapolated outflow using gradient
+        Switch calcFrac_;
 
 
 public:
