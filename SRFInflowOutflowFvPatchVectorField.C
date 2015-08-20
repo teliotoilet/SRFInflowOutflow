@@ -219,6 +219,7 @@ void Foam::SRFInflowOutflowFvPatchVectorField::write(Ostream& os) const
     fvPatchVectorField::write(os);
     os.writeKeyword("relative") << relative_ << token::END_STATEMENT << nl;
     os.writeKeyword("UInf") << UInf_ << token::END_STATEMENT << nl;
+    os.writeKeyword("calculateFraction") << calcFrac_ << token::END_STATEMENT << nl;
     os.writeKeyword("phi") << this->phiName_ << token::END_STATEMENT << nl;
     writeEntry("value", os);
 }
