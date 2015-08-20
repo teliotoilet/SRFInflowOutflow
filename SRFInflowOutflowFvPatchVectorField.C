@@ -142,9 +142,9 @@ void Foam::SRFInflowOutflowFvPatchVectorField::updateCoeffs()
             vector gradw( -omg[1],  omg[0],       0 ); // grad( (Omega x r) . k )
             forAll( *this, faceI )
             {
-                refGrad()[faceI].component(0) = patch().Sf()[faceI] & gradu;
-                refGrad()[faceI].component(1) = patch().Sf()[faceI] & gradv;
-                refGrad()[faceI].component(2) = patch().Sf()[faceI] & gradw;
+                refGrad()[faceI].component(0) = patch().Sf()[faceI]/patch().magSf()[faceI] & gradu;
+                refGrad()[faceI].component(1) = patch().Sf()[faceI]/patch().magSf()[faceI] & gradv;
+                refGrad()[faceI].component(2) = patch().Sf()[faceI]/patch().magSf()[faceI] & gradw;
             }
         }
         // If already relative to the SRF simply supply the inlet value
@@ -175,9 +175,9 @@ void Foam::SRFInflowOutflowFvPatchVectorField::updateCoeffs()
         //refGrad().component(2) = patch().Sf() & gradw;
         forAll( *this, faceI )
         {
-            refGrad()[faceI].component(0) = patch().Sf()[faceI] & gradu;
-            refGrad()[faceI].component(1) = patch().Sf()[faceI] & gradv;
-            refGrad()[faceI].component(2) = patch().Sf()[faceI] & gradw;
+            refGrad()[faceI].component(0) = patch().Sf()[faceI]/patch().magSf()[faceI] & gradu;
+            refGrad()[faceI].component(1) = patch().Sf()[faceI]/patch().magSf()[faceI] & gradv;
+            refGrad()[faceI].component(2) = patch().Sf()[faceI]/patch().magSf()[faceI] & gradw;
 
             // note: this makes the BC select inflow/outflow based on initial
             //       rather than instantanteous values
